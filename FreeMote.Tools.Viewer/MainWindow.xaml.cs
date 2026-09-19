@@ -61,6 +61,7 @@ namespace FreeMote.Tools.Viewer
         private bool _playing = true;
         private CancellationTokenSource _sizeChangeCancellation = null;
         private double _playbackSpeed = 1.0;
+        private double _wheelZoomFactor = SettingsWindow.DefaultWheelZoomFactor;
         private int _advancedScreenshotWidth = 1280;
         private int _advancedScreenshotHeight = 720;
         private bool _keepScreenshotScale100;
@@ -157,6 +158,7 @@ namespace FreeMote.Tools.Viewer
             _player.SetVariable("fade_z", 256);
             _player.SetSmoothing(true);
             _player.Show();
+            RefreshParameters();
 
 
             // begin rendering the custom D3D scene into the D3DImage
@@ -306,7 +308,7 @@ namespace FreeMote.Tools.Viewer
             }
             else
             {
-                _player.OffsetScale(1 + ConvertDelta(e.Delta));
+                _player.OffsetScale((float)Math.Pow(_wheelZoomFactor, e.Delta / 120.0));
             }
         }
 
@@ -403,11 +405,6 @@ namespace FreeMote.Tools.Viewer
             var centerY = Height / 2.0;
             var scale = _player.GetScale();
             return (cx * scale + centerX + ex * scale, cy * scale + centerY + ey * scale);
-        }
-
-        private static float ConvertDelta(int delta)
-        {
-            return delta / 120.0f / 50.0f;
         }
 
         private void RenderImage(object sender, RoutedEventArgs e)
@@ -756,6 +753,123 @@ namespace FreeMote.Tools.Viewer
             base.OnDrop(e);
         }
 
+        private void ToggleParameters(object sender, RoutedEventArgs e)
+        {
+            ParameterPane.Visibility = ParameterPane.Visibility == Visibility.Visible
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+            RefreshParameters();
+        }
+
+        private void RefreshParameters()
+        {
+            if (ParameterPane.Visibility != Visibility.Visible || _player == null)
+            {
+                return;
+            }
+
+            ParameterPanel.Children.Clear();
+            var count = _player.CountVariables();
+            for (uint i = 0; i < count; i++)
+            {
+                var label = _player.GetVariableLabelAt(i);
+                var current = _player.GetVariable(label);
+                var minimum = float.PositiveInfinity;
+                var maximum = float.NegativeInfinity;
+                var frameCount = _player.CountVariableFrameAt(i);
+                for (uint frame = 0; frame < frameCount; frame++)
+                {
+                    var value = _player.GetVariableFrameValueAt(i, frame);
+                    if (float.IsNaN(value) || float.IsInfinity(value))
+                    {
+                        continue;
+                    }
+
+                    minimum = Math.Min(minimum, value);
+                    maximum = Math.Max(maximum, value);
+                }
+
+                var hasRange = minimum <= maximum;
+                if (!hasRange)
+                {
+                    minimum = maximum = float.IsNaN(current) || float.IsInfinity(current) ? 0f : current;
+                }
+
+                var caption = new TextBlock
+                {
+                    Text = label,
+                    Foreground = Brushes.Gainsboro,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 4)
+                };
+                var slider = new Slider
+                {
+                    Minimum = minimum,
+                    Maximum = maximum,
+                    Value = float.IsNaN(current) || float.IsInfinity(current) ? minimum : current,
+                    SmallChange = ((double)maximum - minimum) / 100,
+                    LargeChange = ((double)maximum - minimum) / 10,
+                    IsEnabled = maximum > minimum,
+                    AutoToolTipPlacement = System.Windows.Controls.Primitives.AutoToolTipPlacement.BottomRight,
+                    AutoToolTipPrecision = 2,
+                    Margin = new Thickness(0, 0, 0, 12),
+                    ToolTip = hasRange ? $"{label}: {minimum:G} – {maximum:G}\nRight-click to reset." : "No parameter range is provided by the model."
+                };
+                // Attach after initialization so opening the panel does not change the model.
+                var refreshingValue = false;
+                slider.ValueChanged += (s, args) =>
+                {
+                    if (!refreshingValue)
+                    {
+                        _player.SetVariable(label, (float)args.NewValue, 0f, 0f);
+                    }
+                };
+                slider.PreviewMouseRightButtonUp += (s, args) =>
+                {
+                    args.Handled = true;
+                    _player.SetVariable(label, GetParameterResetValue(label), 0f, 0f);
+                    // SetVariable is applied by the engine on its next update.
+                    _emote.Update(0);
+                    refreshingValue = true;
+                    try
+                    {
+                        slider.Value = _player.GetVariable(label);
+                    }
+                    finally
+                    {
+                        refreshingValue = false;
+                    }
+                };
+                var valueText = new TextBlock
+                {
+                    Foreground = Brushes.Aquamarine,
+                    Margin = new Thickness(8, 0, 0, 4),
+                    TextAlignment = TextAlignment.Right
+                };
+                valueText.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("Value")
+                {
+                    Source = slider,
+                    Mode = System.Windows.Data.BindingMode.OneWay,
+                    StringFormat = "{0:0.##}"
+                });
+                var header = new DockPanel();
+                DockPanel.SetDock(valueText, Dock.Right);
+                header.Children.Add(valueText);
+                header.Children.Add(caption);
+                ParameterPanel.Children.Add(header);
+                ParameterPanel.Children.Add(slider);
+            }
+
+            if (count == 0)
+            {
+                ParameterPanel.Children.Add(new TextBlock
+                {
+                    Text = "No parameters available.",
+                    Foreground = Brushes.Gainsboro
+                });
+            }
+        }
+
         private void GetTimelines(object sender, RoutedEventArgs e)
         {
             if (MotionPanel.Children.Count > 0)
@@ -904,6 +1018,8 @@ namespace FreeMote.Tools.Viewer
             _player.StopTimeline("");
             _player.Skip();
             _player.SetVariable("fade_z", 256);
+            _emote.Update(0);
+            RefreshParameters();
         }
 
         private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -912,14 +1028,23 @@ namespace FreeMote.Tools.Viewer
             MainWindow_MouseWheel(sender, e);
         }
 
+        private static float GetParameterResetValue(string label)
+        {
+            return label == "fade_z" ? 256f : 0f;
+        }
+
         private void Clear(object sender, RoutedEventArgs e)
         {
             for (uint i = 0; i < _player.CountVariables(); i++)
             {
-                _player.SetVariable(_player.GetVariableLabelAt(i), 0);
+                var label = _player.GetVariableLabelAt(i);
+                _player.SetVariable(label, GetParameterResetValue(label), 0f, 0f);
             }
 
             _player.SetVariable("fade_z", 256);
+            // Read back the applied values, rather than the previous frame's values.
+            _emote.Update(0);
+            RefreshParameters();
         }
 
         private void PlayOrPause(object sender, RoutedEventArgs e)
@@ -936,7 +1061,7 @@ namespace FreeMote.Tools.Viewer
         private void OpenSettings(object sender, RoutedEventArgs e)
         {
             var originalPlaybackSpeed = _playbackSpeed;
-            var settingsWindow = new SettingsWindow(_playbackSpeed, _advancedScreenshotWidth, _advancedScreenshotHeight, _keepScreenshotScale100, _centerPointMode)
+            var settingsWindow = new SettingsWindow(_playbackSpeed, _advancedScreenshotWidth, _advancedScreenshotHeight, _keepScreenshotScale100, _centerPointMode, _wheelZoomFactor)
             {
                 Owner = this
             };
@@ -945,6 +1070,7 @@ namespace FreeMote.Tools.Viewer
             if (settingsWindow.ShowDialog() == true)
             {
                 _playbackSpeed = settingsWindow.PlaybackSpeed;
+                _wheelZoomFactor = settingsWindow.WheelZoomFactor;
                 _advancedScreenshotWidth = settingsWindow.ScreenshotWidth;
                 _advancedScreenshotHeight = settingsWindow.ScreenshotHeight;
                 _keepScreenshotScale100 = settingsWindow.KeepScreenshotScale100;
@@ -961,6 +1087,7 @@ namespace FreeMote.Tools.Viewer
         {
             var settings = Properties.Settings.Default;
             _playbackSpeed = Clamp(settings.PlaybackSpeed, 0.05, 3.0);
+            _wheelZoomFactor = SettingsWindow.NormalizeWheelZoomFactor(settings.WheelZoomFactor);
             _advancedScreenshotWidth = Clamp(settings.ScreenshotWidth, MinScreenshotSize, MaxScreenshotSize);
             _advancedScreenshotHeight = Clamp(settings.ScreenshotHeight, MinScreenshotSize, MaxScreenshotSize);
             _keepScreenshotScale100 = settings.KeepScreenshotScale100;
@@ -971,6 +1098,7 @@ namespace FreeMote.Tools.Viewer
         {
             var settings = Properties.Settings.Default;
             settings.PlaybackSpeed = _playbackSpeed;
+            settings.WheelZoomFactor = _wheelZoomFactor;
             settings.ScreenshotWidth = _advancedScreenshotWidth;
             settings.ScreenshotHeight = _advancedScreenshotHeight;
             settings.KeepScreenshotScale100 = _keepScreenshotScale100;

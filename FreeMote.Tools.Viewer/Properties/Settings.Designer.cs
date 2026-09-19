@@ -58,6 +58,18 @@ namespace FreeMote.Tools.Viewer.Properties {
                 this["ScreenshotHeight"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1.02")]
+        public double WheelZoomFactor {
+            get {
+                return ((double)(this["WheelZoomFactor"]));
+            }
+            set {
+                this["WheelZoomFactor"] = value;
+            }
+        }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]

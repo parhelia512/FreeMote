@@ -2,6 +2,9 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="FreeMote.Tools.Viewer.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
+    <Setting Name="WheelZoomFactor" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1.02</Value>
+    </Setting>
     <Setting Name="PlaybackSpeed" Type="System.Double" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>

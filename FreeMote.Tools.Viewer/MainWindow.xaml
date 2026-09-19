@@ -22,7 +22,7 @@
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="420"/>
+                <ColumnDefinition Width="460"/>
                 <ColumnDefinition Width="25"/>
             </Grid.ColumnDefinitions>
             <TextBlock Margin="2,2,0,0" Foreground="Silver" Opacity="0.5" FontSize="11" Tag="You are not allowed to remove this line according to License (BY)">Powered by FreeMote</TextBlock>
@@ -33,9 +33,19 @@
                 <Button Width="30" HorizontalAlignment="Right" Content="⚙" ToolTip="Settings" Margin="0,5,5,5" Background="Transparent" Foreground="Aquamarine" BorderThickness="3" BorderBrush="Aquamarine" Click="OpenSettings"></Button>
                 <Button Width="30" HorizontalAlignment="Right" Content="🔍" ToolTip="Reset Scale" Margin="0,5,5,5" Background="Transparent" Foreground="Aquamarine" BorderThickness="3" BorderBrush="Aquamarine" Click="ResetScale"></Button>
                 <Button Width="60" HorizontalAlignment="Right" Content="Motion" Margin="0,5,5,5" Background="Transparent" Foreground="Aquamarine" BorderThickness="3" BorderBrush="Aquamarine" Click="GetTimelines"></Button>
+                <Button Width="60" HorizontalAlignment="Right" Content="Params" Margin="0,5,5,5" Background="Transparent" Foreground="Aquamarine" BorderThickness="3" BorderBrush="Aquamarine" Click="ToggleParameters"></Button>
                 <Button Width="60" HorizontalAlignment="Right" Content="Stop" Margin="0,5,5,5" Background="Transparent" Foreground="Aquamarine" BorderThickness="3" BorderBrush="Aquamarine" Click="Stop"></Button>
                 <Button Width="60" HorizontalAlignment="Right" Content="Clear" Margin="0,5,0,5" Background="Transparent" Foreground="Aquamarine" BorderThickness="3" BorderBrush="Aquamarine" Click="Clear"></Button>
             </StackPanel>
+            <Border x:Name="ParameterPane" Grid.Row="1" Grid.ColumnSpan="2" Grid.Column="0" HorizontalAlignment="Left" Width="260"
+                    Margin="5,0,0,10" Padding="10,10,4,10" Background="#A8202020" BorderBrush="Aquamarine" BorderThickness="1" Visibility="Collapsed">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Parameter" Foreground="Aquamarine" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="ParameterPanel" Margin="0,0,12,0"/>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
             <ScrollViewer x:Name="ScrollMotion" VerticalScrollBarVisibility="Auto" Grid.Column="1"  Grid.Row="1" IsHitTestVisible="False">
                 <StackPanel Name="MotionPanel" HorizontalAlignment="Right" Orientation="Vertical">
                 </StackPanel>

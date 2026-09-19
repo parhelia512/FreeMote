@@ -9,6 +9,7 @@ namespace FreeMote.Tools.Viewer
         private const int MinScreenshotSize = 100;
         private const int MaxScreenshotSize = 10240;
         private const double DefaultPlaybackSpeed = 1.0;
+        internal const double DefaultWheelZoomFactor = 1.02;
         private const int DefaultScreenshotWidth = 1920;
         private const int DefaultScreenshotHeight = 1080;
         private const string DefaultCenterPointMode = "default";
@@ -16,22 +17,26 @@ namespace FreeMote.Tools.Viewer
         public event Action<double> PlaybackSpeedPreviewChanged;
 
         public double PlaybackSpeed { get; private set; }
+        public double WheelZoomFactor { get; private set; }
         public int ScreenshotWidth { get; private set; }
         public int ScreenshotHeight { get; private set; }
         public bool KeepScreenshotScale100 { get; private set; }
         public string CenterPointMode { get; private set; }
 
-        public SettingsWindow(double playbackSpeed, int screenshotWidth, int screenshotHeight, bool keepScreenshotScale100, string centerPointMode)
+        public SettingsWindow(double playbackSpeed, int screenshotWidth, int screenshotHeight, bool keepScreenshotScale100, string centerPointMode, double wheelZoomFactor)
         {
             InitializeComponent();
 
             PlaybackSpeed = Clamp(playbackSpeed, 0.05, 3.0);
+            WheelZoomFactor = NormalizeWheelZoomFactor(wheelZoomFactor);
             ScreenshotWidth = Clamp(screenshotWidth, MinScreenshotSize, MaxScreenshotSize);
             ScreenshotHeight = Clamp(screenshotHeight, MinScreenshotSize, MaxScreenshotSize);
             KeepScreenshotScale100 = keepScreenshotScale100;
             CenterPointMode = NormalizeCenterPointMode(centerPointMode);
 
             SpeedSlider.Value = PlaybackSpeed;
+            WheelZoomSlider.Value = WheelZoomFactor;
+            UpdateWheelZoomText();
             WidthBox.Text = ScreenshotWidth.ToString(CultureInfo.InvariantCulture);
             HeightBox.Text = ScreenshotHeight.ToString(CultureInfo.InvariantCulture);
             KeepScaleBox.IsChecked = KeepScreenshotScale100;
@@ -55,6 +60,7 @@ namespace FreeMote.Tools.Viewer
             }
 
             PlaybackSpeed = Math.Round(SpeedSlider.Value, 2);
+            WheelZoomFactor = Math.Round(WheelZoomSlider.Value, 2);
             ScreenshotWidth = width;
             ScreenshotHeight = height;
             KeepScreenshotScale100 = KeepScaleBox.IsChecked == true;
@@ -65,12 +71,33 @@ namespace FreeMote.Tools.Viewer
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
             SpeedSlider.Value = DefaultPlaybackSpeed;
+            WheelZoomSlider.Value = DefaultWheelZoomFactor;
             WidthBox.Text = DefaultScreenshotWidth.ToString(CultureInfo.InvariantCulture);
             HeightBox.Text = DefaultScreenshotHeight.ToString(CultureInfo.InvariantCulture);
             KeepScaleBox.IsChecked = false;
             SetCenterPointMode(DefaultCenterPointMode);
             UpdateSpeedText();
             PlaybackSpeedPreviewChanged?.Invoke(DefaultPlaybackSpeed);
+        }
+
+        internal static double NormalizeWheelZoomFactor(double value)
+        {
+            return double.IsNaN(value) || double.IsInfinity(value)
+                ? DefaultWheelZoomFactor
+                : Clamp(value, 1.01, 2.0);
+        }
+
+        private void WheelZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            UpdateWheelZoomText();
+        }
+
+        private void UpdateWheelZoomText()
+        {
+            if (WheelZoomValue != null)
+            {
+                WheelZoomValue.Text = $"{WheelZoomSlider.Value:F2}x";
+            }
         }
 
         private void UpdateSpeedText()
